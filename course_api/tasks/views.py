@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404, render
+from django.db import transaction
 
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.serializers import ModelSerializer, IntegerField
@@ -26,7 +27,6 @@ class TaskSerializer(ModelSerializer):
         exclude = ( "external_id","deleted")
 
     def validate(self, attrs):
-
         validated_data =  super().validate(attrs)
         user = self.context["request"].user
         status = validated_data["status"]
@@ -59,6 +59,20 @@ class StatusViewset(ModelViewSet):
     def get_queryset(self):
         return self.queryset.filter(created_by = self.request.user)
 
+class NestedStatusViewSet(ModelViewSet):
+    queryset = Status.objects.all()
+    serializer_class = StatusSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        print(self.kwargs)
+        board = get_object_or_404(Board.objects.filter(id=self.kwargs["boards_pk"] , created_by =self.request.user))
+        return self.queryset.filter(board=board)
+
+    def perform_create(self, serializer):
+        board = get_object_or_404(Board.objects.filter(id=self.kwargs["boards_pk"] , created_by =self.request.user))
+        serializer.save(board=board)
+
 class TaskViewSet(ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
@@ -66,10 +80,27 @@ class TaskViewSet(ModelViewSet):
 
     def get_queryset(self):
         print(self.kwargs)
-
         board = get_object_or_404(Board.objects.filter(id=self.kwargs["boards_pk"] , created_by =self.request.user))
-        return self.queryset.filter(board=board)
+        return self.queryset.filter(board=board).order_by('priority')
 
     def perform_create(self, serializer):
         board = get_object_or_404(Board.objects.filter(id=self.kwargs["boards_pk"] , created_by =self.request.user))
+        cascade_priority(board,serializer.validated_data["status"],serializer.validated_data["priority"])  
         serializer.save(board=board)
+    
+    def perform_update(self, serializer):
+        cascade_priority(serializer.validated_data["board"],serializer.validated_data["status"],serializer.validated_data["priority"])  
+        serializer.save()
+
+def cascade_priority(board,status,priority):
+    if Task.objects.filter(board=board,status=status,priority=priority).exists():
+        updateSet = []
+        p = priority
+        parseDB = Task.objects.select_for_update().filter(board=board,status=status,priority__gte=priority).order_by('priority')
+        with transaction.atomic():
+            for task in parseDB:
+                if task.priority == p:
+                    task.priority += 1;
+                    p += 1
+                    updateSet.append(task)
+        n = Task.objects.bulk_update(updateSet,['priority'])

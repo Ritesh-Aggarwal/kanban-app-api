@@ -10,10 +10,12 @@ class Board(BaseModel):
     
     def __str__(self):
         return self.title
+
 class Status(BaseModel):
     title = models.CharField(max_length=100)
     description = models.TextField()
     created_by = models.ForeignKey(User , on_delete=models.CASCADE , null=True,blank=True)
+    board = models.ForeignKey(Board , on_delete=models.CASCADE , null=True,blank=True)
 
     def __str__(self):
         return self.title
@@ -21,6 +23,7 @@ class Status(BaseModel):
 class Task(BaseModel):
     title = models.CharField(max_length=100)
     description = models.TextField()
+    priority = models.IntegerField(default=0)
     board = models.ForeignKey(Board , on_delete=models.CASCADE , null=True,blank=True)
     status = models.ForeignKey(Status , on_delete=models.CASCADE , null=True,blank=True)
 

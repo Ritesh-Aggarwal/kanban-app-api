@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter, SimpleRouter
 from rest_framework_nested import routers
 from rest_framework_nested.routers import NestedSimpleRouter
 
-from course_api.tasks.views import BoardViewset, StatusViewset, TaskViewSet
+from course_api.tasks.views import BoardViewset, NestedStatusViewSet, StatusViewset, TaskViewSet
 from course_api.users.api.views import (
     DecoratedTokenObtainPairView,
     DecoratedTokenRefreshView,
@@ -24,6 +24,7 @@ router.register("boards" , BoardViewset)
 board_nested_router = NestedSimpleRouter(router, r"boards", lookup="boards")
 
 board_nested_router.register("tasks",TaskViewSet)
+board_nested_router.register("status",NestedStatusViewSet)
 
 app_name = "api"
 
