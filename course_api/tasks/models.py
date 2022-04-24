@@ -26,6 +26,8 @@ class Task(BaseModel):
     priority = models.IntegerField(default=0)
     board = models.ForeignKey(Board , on_delete=models.CASCADE , null=True,blank=True)
     status = models.ForeignKey(Status , on_delete=models.CASCADE , null=True,blank=True)
+    completed = models.BooleanField(default=False)
+
 
     def __str__(self):
         return self.title
